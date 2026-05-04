@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stop Anthropomorphizing Intermediate Tokens — ICML 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:           #0d1117;
+      --surface:      #161b22;
+      --surface2:     #21262d;
+      --border:       rgba(255,255,255,0.08);
+      --border-solid: #30363d;
+      --text:         #e6edf3;
+      --text-muted:   #8b949e;
+      --accent:       #f0a500;
+      --accent-dim:   rgba(240,165,0,0.14);
+      --accent-glow:  rgba(240,165,0,0.35);
+      --red:          #f85149;
+      --red-dim:      rgba(248,81,73,0.14);
+      --blue:         #58a6ff;
+      --blue-dim:     rgba(88,166,255,0.12);
+      --green:        #3fb950;
+      --green-dim:    rgba(63,185,80,0.12);
+      --purple:       #bc8cff;
+      --radius:       12px;
+      --radius-sm:    8px;
+      --shadow:       0 8px 40px rgba(0,0,0,0.5);
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body:    'DM Sans', system-ui, sans-serif;
+      --font-mono:    'DM Mono', 'Fira Code', monospace;
+    }
+    [data-theme="light"] {
+      --bg:           #f6f8fa;
+      --surface:      #ffffff;
+      --surface2:     #f0f3f6;
+      --border:       rgba(0,0,0,0.08);
+      --border-solid: #d0d7de;
+      --text:         #1f2328;
+      --text-muted:   #656d76;
+      --accent:       #c07800;
+      --accent-dim:   rgba(192,120,0,0.1);
+      --accent-glow:  rgba(192,120,0,0.2);
+      --red:          #cf222e;
+      --red-dim:      rgba(207,34,46,0.08);
+      --blue:         #0969da;
+      --blue-dim:     rgba(9,105,218,0.08);
+      --green:        #1a7f37;
+      --green-dim:    rgba(26,127,55,0.08);
+      --shadow:       0 4px 20px rgba(0,0,0,0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg); color: var(--text);
+      line-height: 1.65; font-size: 16px;
+      transition: background 0.3s, color 0.3s;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.7;
+    }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,17,23,0.88);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px; transition: background 0.3s;
+    }
+    [data-theme="light"] nav { background: rgba(246,248,250,0.88); }
+    .nav-badge {
+      font-size: 0.76rem; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--accent);
+      border: 1px solid var(--accent); border-radius: 4px; padding: 2px 9px;
+    }
+    .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.87rem; font-weight: 500; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .theme-toggle {
+      background: none; border: 1px solid var(--border-solid);
+      border-radius: 6px; color: var(--text-muted); cursor: pointer; font-size: 1rem;
+      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Hero */
+    .hero {
+      position: relative; z-index: 1;
+      padding: 6rem 2rem 5rem; text-align: center; overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 500px;
+      background: radial-gradient(ellipse, rgba(248,81,73,0.18) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .venue-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--accent-dim); border: 1px solid rgba(240,165,0,0.3);
+      border-radius: 100px; padding: 0.3rem 1rem;
+      font-size: 0.82rem; font-weight: 600; color: var(--accent); letter-spacing: 0.04em;
+      margin-bottom: 1.25rem; animation: fadeDown 0.6s ease both;
+    }
+    .venue-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+    .position-label {
+      display: inline-block; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--red); border: 1px solid var(--red);
+      border-radius: 4px; padding: 2px 8px; margin-bottom: 1.25rem;
+      animation: fadeDown 0.6s 0.05s ease both;
+    }
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.9rem, 5vw, 3.25rem);
+      font-weight: 400; line-height: 1.2;
+      max-width: 840px; margin: 0 auto 0.75rem;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+    h1 em { font-style: italic; color: var(--red); }
+    .hero-sub {
+      font-size: 1.05rem; color: var(--text-muted);
+      max-width: 620px; margin: 0 auto 2.5rem;
+      animation: fadeDown 0.6s 0.2s ease both;
+    }
+
+    /* Authors */
+    .authors {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 0.5rem 1.75rem; margin-bottom: 1rem;
+      animation: fadeDown 0.6s 0.25s ease both;
+    }
+    .author { text-align: center; }
+    .author-name { font-weight: 600; font-size: 0.93rem; }
+    .author-affil { font-size: 0.76rem; color: var(--text-muted); }
+
+    /* Buttons */
+    .btn-group {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 0.75rem; animation: fadeDown 0.6s 0.35s ease both; margin-bottom: 0.75rem;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 1.25rem; border-radius: var(--radius-sm);
+      font-size: 0.88rem; font-weight: 500; text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s; cursor: pointer;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--accent); color: #0d1117; box-shadow: 0 0 22px var(--accent-glow); }
+    .btn-primary:hover { box-shadow: 0 0 32px var(--accent-glow); }
+    .btn-outline { background: transparent; border: 1px solid var(--border-solid); color: var(--text); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    .hero-abstract {
+      max-width: 760px; margin: 2rem auto 0; padding: 1.5rem 2rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 0.97rem; color: var(--text-muted); text-align: left; line-height: 1.8;
+      animation: fadeDown 0.6s 0.45s ease both;
+    }
+    .hero-abstract strong { color: var(--text); }
+
+    /* Section shared */
+    section { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 4rem 2rem; }
+    .section-label {
+      font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem;
+    }
+    h2 { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.25rem); font-weight: 400; margin-bottom: 2.5rem; line-height: 1.25; }
+    .section-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    /* Quote banner */
+    .question-banner {
+      background: var(--red-dim); border: 1px solid rgba(248,81,73,0.25);
+      border-radius: var(--radius); padding: 2rem 2.5rem; margin-bottom: 3rem; text-align: center;
+    }
+    .question-banner blockquote {
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 2.5vw, 1.55rem);
+      font-style: italic; color: var(--text); line-height: 1.5; border: none; padding: 0;
+    }
+    .question-banner cite { display: block; margin-top: 0.75rem; font-style: normal; font-size: 0.82rem; color: var(--text-muted); letter-spacing: 0.04em; }
+
+    /* Claim cards */
+    .claims-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+    .claim-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.75rem 1.5rem;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .claim-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--red); opacity: 0; transition: opacity 0.2s; }
+    .claim-card:hover { border-color: var(--red); transform: translateY(-3px); box-shadow: var(--shadow); }
+    .claim-card:hover::before { opacity: 1; }
+    .claim-num { font-family: var(--font-display); font-size: 2.8rem; line-height: 1; color: var(--border-solid); margin-bottom: 0.75rem; }
+    .claim-card h4 { font-size: 0.95rem; font-weight: 700; color: var(--red); margin-bottom: 0.5rem; }
+    .claim-card p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; }
+    .claim-card p strong { color: var(--text); }
+
+    /* Evidence */
+    .evidence-list { display: flex; flex-direction: column; gap: 1.25rem; }
+    .evidence-item {
+      display: flex; gap: 1.25rem; align-items: flex-start;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.5rem; transition: border-color 0.2s;
+    }
+    .evidence-item:hover { border-color: rgba(248,81,73,0.35); }
+    .evidence-icon { font-size: 1.5rem; flex-shrink: 0; width: 2.25rem; text-align: center; line-height: 1; }
+    .evidence-item h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
+    .evidence-item p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; }
+    .evidence-item p strong { color: var(--text); }
+    .evidence-tag {
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      border-radius: 4px; padding: 2px 7px; margin-bottom: 0.5rem;
+    }
+    .tag-empirical  { background: var(--blue-dim);  color: var(--blue);   border: 1px solid rgba(88,166,255,0.25); }
+    .tag-semantic   { background: var(--red-dim);   color: var(--red);    border: 1px solid rgba(248,81,73,0.25); }
+    .tag-structural { background: var(--green-dim); color: var(--green);  border: 1px solid rgba(63,185,80,0.25); }
+    .tag-framing    { background: rgba(188,140,255,0.12); color: var(--purple); border: 1px solid rgba(188,140,255,0.25); }
+
+    /* Terminology table */
+    .term-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border-solid); border-radius: var(--radius); overflow: hidden; font-size: 0.9rem; }
+    .term-table thead { background: var(--surface2); }
+    .term-table th { padding: 0.75rem 1.25rem; text-align: left; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); }
+    .term-table td { padding: 0.85rem 1.25rem; border-top: 1px solid var(--border); }
+    .term-avoid  { color: var(--red);   font-weight: 600; }
+    .term-prefer { color: var(--green); font-weight: 600; }
+
+    /* CTA */
+    .cta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1.25rem; }
+    .cta-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.75rem; transition: border-color 0.2s, transform 0.2s;
+    }
+    .cta-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .cta-num { font-family: var(--font-display); font-size: 2.5rem; line-height: 1; color: var(--accent); margin-bottom: 0.75rem; }
+    .cta-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .cta-card p { font-size: 0.87rem; color: var(--text-muted); line-height: 1.65; }
+
+    /* Citation */
+    .bibtex-wrap { background: var(--surface2); border: 1px solid var(--border-solid); border-radius: var(--radius); overflow: hidden; }
+    .bibtex-header { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border-solid); }
+    .bibtex-header span { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+    #copy-btn { background: none; border: 1px solid var(--border-solid); border-radius: 5px; padding: 0.3rem 0.75rem; color: var(--text-muted); font-size: 0.78rem; font-family: var(--font-body); cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+    #copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    pre { font-family: var(--font-mono); font-size: 0.82rem; padding: 1.25rem 1.5rem 1.5rem; overflow-x: auto; line-height: 1.7; color: var(--text); }
+    .citation-links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--border); text-align: center; padding: 2.5rem 2rem; color: var(--text-muted); font-size: 0.84rem; }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 768px) {
+      nav { padding: 0 1rem; }
+      .nav-links { display: none; }
+      section { padding: 3rem 1.25rem; }
+      h1 { font-size: 1.75rem; }
+      .hero-abstract { padding: 1.25rem; }
+      .question-banner { padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-badge">ICML 2026</span>
+  <ul class="nav-links">
+    <li><a href="#position">Position</a></li>
+    <li><a href="#evidence">Evidence</a></li>
+    <li><a href="#terminology">Terminology</a></li>
+    <li><a href="#cta">Call to Action</a></li>
+    <li><a href="#citation">Cite</a></li>
+  </ul>
+  <button class="theme-toggle" id="toggle" aria-label="Toggle theme">☾</button>
+</nav>
+
+<header class="hero">
+  <div class="hero-glow"></div>
+
+  <div class="venue-badge">
+    <span class="venue-dot"></span>
+    ICML 2026 &nbsp;·&nbsp; Position Paper Track
+  </div>
+
+  <h1>Stop <em>Anthropomorphizing</em> Intermediate Tokens as Reasoning/Thinking Traces!</h1>
+
+  <p class="hero-sub">
+    Calling Chain-of-Thought tokens "reasoning traces" or "thoughts" isn't a harmless metaphor — it actively distorts how we build, evaluate, and trust AI systems.
+  </p>
+
+  <div class="authors">
+    <div class="author"><div class="author-name">Subbarao Kambhampati<sup>∗</sup></div><div class="author-affil">Arizona State University</div></div>
+    <div class="author"><div class="author-name">Karthik Valmeekam<sup>†</sup></div><div class="author-affil">Arizona State University</div></div>
+    <div class="author"><div class="author-name">Siddhant Bhambri<sup>‡</sup></div><div class="author-affil">Arizona State University</div></div>
+    <div class="author"><div class="author-name">Vardhan Palod</div><div class="author-affil">Arizona State University</div></div>
+  </div>
+  <div class="authors">
+    <div class="author"><div class="author-name">Lucas Saldyt</div><div class="author-affil">Arizona State University</div></div>
+    <div class="author"><div class="author-name">Kaya Stechly<sup>§</sup></div><div class="author-affil">Arizona State University</div></div>
+    <div class="author"><div class="author-name">Soumya Rani Samineni</div><div class="author-affil">Arizona State University</div></div>
+    <div class="author"><div class="author-name">Durgesh Kalwar</div><div class="author-affil">Arizona State University</div></div>
+    <div class="author"><div class="author-name">Upasana Biswas</div><div class="author-affil">Arizona State University</div></div>
+  </div>
+
+  <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:1.5rem;animation:fadeDown 0.6s 0.28s ease both;line-height:1.8;">
+    <sup>∗</sup> Corresponding author: <a href="mailto:rao@asu.edu" style="color:var(--accent);text-decoration:none;">rao@asu.edu</a> &ensp;
+    <sup>†</sup> Work done at ASU; currently at Amazon AGI &ensp;
+    <sup>‡</sup> Work done at ASU; currently at Samsung Research America &ensp;
+    <sup>§</sup> Work done at ASU; currently at Yale University
+  </p>
+
+  <div class="btn-group">
+    <a class="btn btn-primary" href="https://arxiv.org/abs/2504.09762" target="_blank">📄 Paper (arXiv)</a>
+    <a class="btn btn-outline" href="https://arxiv.org/pdf/2504.09762" target="_blank">⬇ PDF</a>
+  </div>
+
+  <div class="hero-abstract">
+    Intermediate token generation (ITG) — where a model produces output <em>before</em> the solution — has become standard in LLM reasoning. These tokens are called <strong>"reasoning traces"</strong> or <strong>"thoughts,"</strong> implicitly anthropomorphizing the model and implying human-like, interpretable reasoning steps. We present evidence that this anthropomorphization is <strong>not a harmless metaphor</strong>: it confuses the nature of these models, leads to questionable research, and creates false confidence about model capabilities. We call on the community to <strong>stop anthropomorphizing intermediate tokens</strong> and adopt precise, neutral terminology.
+  </div>
+</header>
+
+<hr class="section-divider" />
+
+<section id="position">
+  <div class="section-label">The Position</div>
+  <h2>Four Reasons Anthropomorphization is Dangerous</h2>
+
+  <div class="question-banner">
+    <blockquote>
+      "Anthropomorphizing intermediate tokens as reasoning/thinking traces is
+      <strong>(1) wishful,  (2) has little concrete supporting evidence,
+      (3) engenders false confidence,</strong> and
+      <strong>(4) may be pushing the community into fruitless research directions.</strong>"
+    </blockquote>
+    <cite>— Kambhampati et al., ICML 2026</cite>
+  </div>
+
+  <div class="claims-grid">
+    <div class="claim-card">
+      <div class="claim-num">01</div>
+      <h4>Wishful</h4>
+      <p>Calling ITG "thinking" reflects our <strong>desire</strong> for LLMs to reason like humans — not evidence they do. The anthropomorphic framing is aspirational, not descriptive, and conflates statistical token prediction with structured cognition.</p>
+    </div>
+    <div class="claim-card">
+      <div class="claim-num">02</div>
+      <h4>Little Supporting Evidence</h4>
+      <p>A growing body of work shows that models improve even with <strong>semantically incorrect or structurally meaningless traces</strong> — directly undermining the claim that intermediate tokens encode meaningful reasoning steps.</p>
+    </div>
+    <div class="claim-card">
+      <div class="claim-num">03</div>
+      <h4>Engenders False Confidence</h4>
+      <p>Users and researchers treat visible intermediate tokens as a <strong>window into model "thinking."</strong> This creates unwarranted trust — models can produce plausible-sounding traces causally unrelated to their final answers.</p>
+    </div>
+    <div class="claim-card">
+      <div class="claim-num">04</div>
+      <h4>Fruitless Research Directions</h4>
+      <p>The anthropomorphic framing has spawned research aimed at improving trace <strong>human-interpretability as a proxy for model capability</strong> — a goal that may be both misguided and empirically counterproductive.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<section id="evidence">
+  <div class="section-label">Evidence</div>
+  <h2>What the Literature Actually Shows</h2>
+
+  <p style="font-size:0.92rem;color:var(--text-muted);margin-bottom:2rem;max-width:720px;">
+    The paper collates an extensive body of emerging empirical work that collectively challenges the interpretation of intermediate tokens as human-like reasoning traces.
+  </p>
+
+  <div class="evidence-list">
+    <div class="evidence-item">
+      <div class="evidence-icon">🔬</div>
+      <div>
+        <span class="evidence-tag tag-empirical">Empirical</span>
+        <h4>Models improve with semantically <em>incorrect</em> traces</h4>
+        <p>Multiple studies show that LLMs fine-tuned on <strong>incorrect or meaningless intermediate tokens paired with correct final answers</strong> still improve on downstream tasks. If traces were "doing the reasoning," this result should be impossible.</p>
+      </div>
+    </div>
+    <div class="evidence-item">
+      <div class="evidence-icon">🧩</div>
+      <div>
+        <span class="evidence-tag tag-semantic">Semantic</span>
+        <h4>Intermediate tokens have no formal semantic grounding</h4>
+        <p>Traces are filtered by whether they lead to correct <em>final answers</em> — not by their own correctness. <strong>No direct optimization pressure</strong> is applied to intermediate tokens themselves during RL post-training, so their semantic content is largely uncontrolled.</p>
+      </div>
+    </div>
+    <div class="evidence-item">
+      <div class="evidence-icon">📏</div>
+      <div>
+        <span class="evidence-tag tag-structural">Structural</span>
+        <h4>Trace length does not reliably track problem complexity</h4>
+        <p>The "adaptive computation" narrative — that longer traces signal harder problems — is not reliably supported empirically. <strong>Trace length is not a trustworthy signal</strong> of the model's internal effort or the difficulty of the task.</p>
+      </div>
+    </div>
+    <div class="evidence-item">
+      <div class="evidence-icon">🪟</div>
+      <div>
+        <span class="evidence-tag tag-semantic">Semantic</span>
+        <h4>Interpretable traces ≠ better model performance</h4>
+        <p>The most performance-effective traces (verbose DeepSeek R1 outputs) are <strong>rated least interpretable by human users</strong>. Verifiably correct, human-readable traces perform worst in SFT. Interpretability and utility as a training signal are empirically decoupled.</p>
+      </div>
+    </div>
+    <div class="evidence-item">
+      <div class="evidence-icon">🎭</div>
+      <div>
+        <span class="evidence-tag tag-framing">Framing</span>
+        <h4>OpenAI hides o1's own "thinking"</h4>
+        <p>OpenAI deliberately hides o1's intermediate tokens from users, providing only a <strong>sanitized post-hoc summary.</strong> This is an implicit acknowledgment by a leading lab that raw intermediate tokens are not interpretable — directly contradicting the anthropomorphic framing.</p>
+      </div>
+    </div>
+    <div class="evidence-item">
+      <div class="evidence-icon">🔁</div>
+      <div>
+        <span class="evidence-tag tag-framing">Framing</span>
+        <h4>Post-hoc rationalization ≠ faithful reasoning trace</h4>
+        <p>For humans, post-facto verbal explanations are known to be rationalizations — not faithful accounts of mental processes. <strong>The same skepticism applies to LLM "explanations"</strong> of their own intermediate token production, generated by the same model after the fact.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<section id="terminology">
+  <div class="section-label">Terminology</div>
+  <h2>A Vocabulary for Precision</h2>
+
+  <p style="font-size:0.92rem;color:var(--text-muted);margin-bottom:2rem;max-width:720px;">
+    The paper proposes <strong>"derivational trace"</strong> as a neutral, non-anthropomorphic term for intermediate tokens — whether generated by humans, formal solvers, or LLMs. Key terminology shifts:
+  </p>
+
+  <div style="overflow-x:auto;">
+    <table class="term-table">
+      <thead>
+        <tr>
+          <th>Avoid ✗</th>
+          <th>Prefer ✓</th>
+          <th>Why it matters</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="term-avoid">Reasoning trace</span></td>
+          <td><span class="term-prefer">Derivational trace / Intermediate tokens</span></td>
+          <td style="color:var(--text-muted);font-size:0.87rem;">"Reasoning" implies structured, interpretable problem-solving steps the evidence does not support.</td>
+        </tr>
+        <tr>
+          <td><span class="term-avoid">Thinking trace / Thoughts</span></td>
+          <td><span class="term-prefer">Intermediate token sequence</span></td>
+          <td style="color:var(--text-muted);font-size:0.87rem;">Anthropomorphizes a statistical sampling process as cognition; conflates token generation with human experience.</td>
+        </tr>
+        <tr>
+          <td><span class="term-avoid">Chain-of-Thought (as reasoning)</span></td>
+          <td><span class="term-prefer">Intermediate token generation (ITG)</span></td>
+          <td style="color:var(--text-muted);font-size:0.87rem;">The mechanism is token prediction — not chained logical inference. Neutral framing preserves the empirical facts.</td>
+        </tr>
+        <tr>
+          <td><span class="term-avoid">Model is "thinking"</span></td>
+          <td><span class="term-prefer">Model is generating intermediate tokens</span></td>
+          <td style="color:var(--text-muted);font-size:0.87rem;">Precision here prevents false confidence about model reliability and interpretability among users and policymakers.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<section id="cta">
+  <div class="section-label">Call to Action</div>
+  <h2>What the Community Should Do</h2>
+
+  <div class="cta-grid">
+    <div class="cta-card">
+      <div class="cta-num">1</div>
+      <h4>Adopt neutral terminology</h4>
+      <p>Use "intermediate tokens" or "derivational traces" in place of "reasoning traces" or "thoughts." Framing shapes research intuitions — neutral terms prevent anthropomorphic assumptions from silently driving methodology.</p>
+    </div>
+    <div class="cta-card">
+      <div class="cta-num">2</div>
+      <h4>Decouple training signal from interpretability</h4>
+      <p>Optimize intermediate tokens as a training signal for task performance. Separately develop post-hoc explanation modules for user-facing interpretability. These are distinct objectives that should not be conflated.</p>
+    </div>
+    <div class="cta-card">
+      <div class="cta-num">3</div>
+      <h4>Scrutinize interpretability claims</h4>
+      <p>When papers claim traces provide insight into model behavior, demand empirical evidence. Plausibility of trace content to human readers is not the same as causal fidelity to the model's internal computation.</p>
+    </div>
+    <div class="cta-card">
+      <div class="cta-num">4</div>
+      <h4>Evaluate traces and answers independently</h4>
+      <p>Design benchmarks that independently measure trace quality and answer correctness. Current evaluations conflate these, masking the empirical independence — and frequent disconnect — between trace validity and final answer accuracy.</p>
+    </div>
+    <div class="cta-card">
+      <div class="cta-num">5</div>
+      <h4>Challenge "Aha moment" narratives</h4>
+      <p>Anthropomorphic milestones like "emergent reasoning" and "Aha moments" are compelling stories, but extraordinary claims require extraordinary evidence. Treat such narratives with appropriate critical skepticism.</p>
+    </div>
+    <div class="cta-card">
+      <div class="cta-num">6</div>
+      <h4>Redirect research investment</h4>
+      <p>Resources spent improving human-interpretability of raw intermediate tokens may be better invested in robust external verifiers, sound formal solvers, and genuine post-hoc explanation systems with formal guarantees.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<section id="citation">
+  <div class="section-label">Reference</div>
+  <h2>Cite This Work</h2>
+
+  <div class="bibtex-wrap">
+    <div class="bibtex-header">
+      <span>BibTeX</span>
+      <button id="copy-btn">Copy</button>
+    </div>
+<pre id="bibtex">@inproceedings{kambhampati2026anthropomorphizing,
+  title     = {Position: Stop Anthropomorphizing Intermediate
+               Tokens as Reasoning/Thinking Traces!},
+  author    = {Kambhampati, Subbarao and Valmeekam, Karthik
+               and Bhambri, Siddhant and Palod, Vardhan
+               and Saldyt, Lucas and Stechly, Kaya
+               and Samineni, Soumya Rani and Kalwar, Durgesh
+               and Biswas, Upasana},
+  booktitle = {Proceedings of the 43rd International Conference
+               on Machine Learning (ICML) -- Position Papers},
+  year      = {2026},
+  url       = {https://arxiv.org/abs/2504.09762}
+}</pre>
+  </div>
+
+  <div class="citation-links">
+    <a class="btn btn-primary" href="https://arxiv.org/abs/2504.09762" target="_blank">📄 Read Paper</a>
+    <a class="btn btn-outline" href="https://arxiv.org/pdf/2504.09762" target="_blank">⬇ Download PDF</a>
+  </div>
+</section>
+
+<footer>
+  <p>Kambhampati, Valmeekam, Bhambri, et al. &nbsp;·&nbsp; ICML 2026 Position Paper</p>
+  <p style="margin-top:0.4rem;">
+    <a href="https://yochan-lab.github.io/home/" target="_blank">Yochan Lab, Arizona State University</a>
+    &nbsp;·&nbsp;
+    <a href="https://research.samsung.com/aicenter_sv" target="_blank">Samsung Research America</a>
+  </p>
+  <p style="margin-top:0.75rem;font-size:0.78rem;opacity:0.5;">made with ♥ by Claude</p>
+</footer>
+
+<script>
+  // Theme
+  const toggle = document.getElementById('toggle');
+  let dark = true;
+  toggle.addEventListener('click', () => {
+    dark = !dark;
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    toggle.textContent = dark ? '☾' : '☀';
+  });
+
+  // BibTeX copy
+  document.getElementById('copy-btn').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.getElementById('bibtex').textContent).then(() => {
+      this.textContent = '✓ Copied!';
+      this.style.color = 'var(--green)';
+      this.style.borderColor = 'var(--green)';
+      setTimeout(() => { this.textContent = 'Copy'; this.style.color = ''; this.style.borderColor = ''; }, 2000);
+    });
+  });
+
+  // Scroll-reveal
+  const revealEls = document.querySelectorAll('.claim-card, .cta-card, .evidence-item');
+  revealEls.forEach(el => { el.style.opacity = '0'; el.style.transform = 'translateY(16px)'; el.style.transition = 'opacity 0.5s ease, transform 0.5s ease'; });
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const idx = [...revealEls].indexOf(e.target);
+        setTimeout(() => { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; }, (idx % 4) * 60);
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  revealEls.forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
